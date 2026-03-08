@@ -156,8 +156,13 @@ export default function Reservations() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold">Réservations courte durée</h1>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={syncIcal} disabled={syncing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Synchronisation...' : 'Synchroniser iCal'}
+          </Button>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button onClick={openNew}><Plus className="h-4 w-4 mr-2" />Nouvelle réservation</Button>
