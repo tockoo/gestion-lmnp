@@ -286,7 +286,7 @@ export function useSettings() {
   const { data, isLoading } = useQuery({
     queryKey: ['settings'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('settings').select('*').maybeSingle();
+      const { data, error } = await (supabase as any).from('settings').select('*').maybeSingle();
       if (error) throw error;
       if (!data) return { ownerName: '', activeFiscalYear: 2025 } as Settings;
       return dbToSettings(data);
