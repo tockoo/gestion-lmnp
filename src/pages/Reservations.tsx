@@ -11,8 +11,10 @@ import { Badge } from '@/components/ui/badge';
 import { useProperties, useReservations } from '@/lib/store';
 import { formatCurrency, formatDateFR } from '@/lib/receipt-utils';
 import { PLATFORM_TYPES, type Reservation } from '@/types/lmnp';
-import { Plus, Pencil, Trash2, CalendarDays } from 'lucide-react';
+import { Plus, Pencil, Trash2, CalendarDays, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 function calcNights(checkIn: string, checkOut: string): number {
   if (!checkIn || !checkOut) return 0;

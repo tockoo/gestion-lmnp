@@ -130,6 +130,15 @@ export default function Properties() {
                 <div><Label>Durée (années)</Label><Input type="number" value={form.depreciation?.furnitureYears || ''} onChange={e => updateDepreciation('furnitureYears', +e.target.value)} /></div>
               </div>
 
+              {form.rentalType === 'courte-duree' && (
+                <>
+                  <Separator />
+                  <h3 className="font-semibold text-sm">Liens iCal (synchronisation réservations)</h3>
+                  <div><Label>Lien iCal Airbnb</Label><Input placeholder="https://www.airbnb.com/calendar/ical/..." value={form.icalAirbnbUrl || ''} onChange={e => updateForm('icalAirbnbUrl', e.target.value)} /></div>
+                  <div><Label>Lien iCal Booking.com</Label><Input placeholder="https://admin.booking.com/..." value={form.icalBookingUrl || ''} onChange={e => updateForm('icalBookingUrl', e.target.value)} /></div>
+                </>
+              )}
+
               <Button onClick={save} className="w-full">{editing ? 'Enregistrer' : 'Ajouter'}</Button>
             </div>
           </DialogContent>
