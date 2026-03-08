@@ -23,6 +23,7 @@ const emptyProperty: Omit<Property, 'id'> = {
   acquisitionValue: 0, acquisitionDate: '', taxRegime: 'reel-simplifie',
   monthlyCoproCharges: 0, annualPropertyTax: 0, rentalType: 'longue-duree',
   nightlyRate: undefined, depreciation: { ...emptyDepreciation },
+  icalAirbnbUrl: '', icalBookingUrl: '',
 };
 
 export default function Properties() {
