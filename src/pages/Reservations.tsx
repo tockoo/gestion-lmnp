@@ -87,6 +87,39 @@ export default function Reservations() {
 
   const propName = (id: string) => properties.find(p => p.id === id)?.name || '—';
 
+  const syncIcal = async () => {
+    const propsWithIcal = properties.filter(p => p.icalAirbnbUrl || p.icalBookingUrl);
+    if (propsWithIcal.length === 0) {
+      toast.info('Aucun bien avec un lien iCal configuré. Ajoutez vos liens iCal dans les paramètres de vos biens.');
+      return;
+    }
+    setSyncing(true);
+    let totalImported = 0;
+    try {
+      for (const prop of propsWithIcal) {
+        const { data, error } = await supabase.functions.invoke('sync-ical', {
+          body: { property_id: prop.id },
+        });
+        if (error) {
+          console.error('Sync error for', prop.name, error);
+          toast.error(`Erreur sync ${prop.name}: ${error.message}`);
+          continue;
+        }
+        totalImported += data?.imported || 0;
+      }
+      if (totalImported > 0) {
+        toast.success(`${totalImported} nouvelle(s) réservation(s) importée(s)`);
+        queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      } else {
+        toast.info('Aucune nouvelle réservation trouvée');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur de synchronisation');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const statusColor = (s: Reservation['status']) => {
     if (s === 'confirmee') return 'bg-success text-success-foreground';
     if (s === 'terminee') return 'bg-primary text-primary-foreground';
