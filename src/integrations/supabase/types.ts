@@ -70,6 +70,8 @@ export type Database = {
           depreciation_building_years: number
           depreciation_furniture_value: number
           depreciation_furniture_years: number
+          ical_airbnb_url: string | null
+          ical_booking_url: string | null
           id: string
           monthly_copro_charges: number
           name: string
@@ -90,6 +92,8 @@ export type Database = {
           depreciation_building_years?: number
           depreciation_furniture_value?: number
           depreciation_furniture_years?: number
+          ical_airbnb_url?: string | null
+          ical_booking_url?: string | null
           id?: string
           monthly_copro_charges?: number
           name: string
@@ -110,6 +114,8 @@ export type Database = {
           depreciation_building_years?: number
           depreciation_furniture_value?: number
           depreciation_furniture_years?: number
+          ical_airbnb_url?: string | null
+          ical_booking_url?: string | null
           id?: string
           monthly_copro_charges?: number
           name?: string
