@@ -234,7 +234,7 @@ function useCrudHook<T extends { id: string }>(
     mutationFn: async ({ id, ...rest }: T) => {
       if (!user) throw new Error('Not authenticated');
       const dbData = toDb(rest as any, user.id);
-      const { error } = await supabase.from(table).update(dbData).eq('id', id);
+      const { error } = await (supabase as any).from(table).update(dbData).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: [queryKey] }),
