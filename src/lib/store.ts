@@ -52,6 +52,8 @@ function propertyToDb(p: Omit<Property, 'id'>, userId: string) {
     depreciation_building_years: p.depreciation?.buildingYears ?? 25,
     depreciation_furniture_value: p.depreciation?.furnitureValue ?? 0,
     depreciation_furniture_years: p.depreciation?.furnitureYears ?? 7,
+    ical_airbnb_url: p.icalAirbnbUrl ?? null,
+    ical_booking_url: p.icalBookingUrl ?? null,
   };
 }
 

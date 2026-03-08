@@ -21,6 +21,8 @@ export interface Property {
   rentalType: RentalType;
   nightlyRate?: number;
   depreciation?: Depreciation;
+  icalAirbnbUrl?: string;
+  icalBookingUrl?: string;
 }
 
 export interface Tenant {
