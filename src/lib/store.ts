@@ -297,7 +297,7 @@ export function useSettings() {
   const saveMutation = useMutation({
     mutationFn: async (s: Settings) => {
       if (!user) throw new Error('Not authenticated');
-      const { error } = await supabase.from('settings').upsert({
+      const { error } = await (supabase as any).from('settings').upsert({
         user_id: user.id,
         owner_name: s.ownerName,
         active_fiscal_year: s.activeFiscalYear,
