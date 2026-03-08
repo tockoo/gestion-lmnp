@@ -8,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { useProperties, useReservations, generateId } from '@/lib/store';
+import { useProperties, useReservations } from '@/lib/store';
 import { formatCurrency, formatDateFR } from '@/lib/receipt-utils';
-import { PLATFORM_TYPES, type Reservation, type Property } from '@/types/lmnp';
+import { PLATFORM_TYPES, type Reservation } from '@/types/lmnp';
 import { Plus, Pencil, Trash2, CalendarDays } from 'lucide-react';
+import { toast } from 'sonner';
 
 function calcNights(checkIn: string, checkOut: string): number {
   if (!checkIn || !checkOut) return 0;
@@ -27,8 +28,8 @@ const emptyReservation: Omit<Reservation, 'id'> = {
 };
 
 export default function Reservations() {
-  const [properties] = useProperties();
-  const [reservations, setReservations] = useReservations();
+  const { data: properties } = useProperties();
+  const { data: reservations, add, update, remove } = useReservations();
   const [editing, setEditing] = useState<Reservation | null>(null);
   const [form, setForm] = useState<Omit<Reservation, 'id'>>(emptyReservation);
   const [open, setOpen] = useState(false);
@@ -47,19 +48,24 @@ export default function Reservations() {
   };
   const openEdit = (r: Reservation) => { setEditing(r); setForm({ ...r }); setOpen(true); };
 
-  const save = () => {
+  const save = async () => {
     const nights = calcNights(form.checkIn, form.checkOut);
     const totalAmount = (form.nightlyRate * nights) + form.cleaningFees - form.platformFees;
     const data = { ...form, nights, totalAmount };
-    if (editing) {
-      setReservations(prev => prev.map(r => r.id === editing.id ? { ...data, id: editing.id } : r));
-    } else {
-      setReservations(prev => [...prev, { ...data, id: generateId() }]);
-    }
-    setOpen(false);
+    try {
+      if (editing) {
+        await update({ ...data, id: editing.id });
+      } else {
+        await add(data);
+      }
+      setOpen(false);
+    } catch (err: any) { toast.error(err.message); }
   };
 
-  const remove = (id: string) => setReservations(prev => prev.filter(r => r.id !== id));
+  const handleRemove = async (id: string) => {
+    try { await remove(id); } catch (err: any) { toast.error(err.message); }
+  };
+
   const updateForm = (key: string, value: string | number) => {
     setForm(prev => {
       const next = { ...prev, [key]: value };
@@ -89,7 +95,6 @@ export default function Reservations() {
     return 'Annulée';
   };
 
-  // Monthly calendar view data
   const monthlyData = useMemo(() => {
     const now = new Date();
     const months: { month: number; year: number; label: string; reservations: Reservation[] }[] = [];
@@ -179,7 +184,6 @@ export default function Reservations() {
         </Dialog>
       </div>
 
-      {/* Calendar overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {monthlyData.map(m => (
           <Card key={`${m.year}-${m.month}`} className="shadow-md">
@@ -203,7 +207,6 @@ export default function Reservations() {
         ))}
       </div>
 
-      {/* Table */}
       <Card className="shadow-md">
         <CardHeader><CardTitle>Toutes les réservations</CardTitle></CardHeader>
         <CardContent className="p-0">
@@ -235,7 +238,7 @@ export default function Reservations() {
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(r)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => remove(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleRemove(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>

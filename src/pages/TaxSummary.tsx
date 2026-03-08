@@ -9,22 +9,20 @@ import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/types/lmnp';
 import { FileDown } from 'lucide-react';
 
 export default function TaxSummary() {
-  const [properties] = useProperties();
-  const [tenants] = useTenants();
-  const [receipts] = useReceipts();
-  const [expenses] = useExpenses();
-  const [reservations] = useReservations();
-  const [settings] = useSettings();
+  const { data: properties } = useProperties();
+  const { data: tenants } = useTenants();
+  const { data: receipts } = useReceipts();
+  const { data: expenses } = useExpenses();
+  const { data: reservations } = useReservations();
+  const { data: settings } = useSettings();
   const year = settings.activeFiscalYear;
 
   const summaryData = useMemo(() => {
     return properties.map(prop => {
-      // Recettes longue durée
       const propReceipts = receipts.filter(r => r.propertyId === prop.id && r.year === year && r.status !== 'impaye');
       const totalRentHC = propReceipts.reduce((s, r) => s + r.rentHC, 0);
       const totalCharges = propReceipts.reduce((s, r) => s + r.charges, 0);
 
-      // Recettes courte durée
       const propReservations = reservations.filter(r =>
         r.propertyId === prop.id && r.status !== 'annulee' &&
         r.checkIn.startsWith(String(year))
@@ -33,7 +31,6 @@ export default function TaxSummary() {
 
       const totalRecettes = totalRentHC + totalCharges + totalReservations;
 
-      // Dépenses
       const propExpenses = expenses.filter(e => (e.propertyId === prop.id || e.propertyId === 'all') && e.taxDeductible && e.date.startsWith(String(year)));
       const byCategory: Partial<Record<ExpenseCategory, number>> = {};
       for (const e of propExpenses) {
@@ -41,7 +38,6 @@ export default function TaxSummary() {
       }
       const totalDepenses = propExpenses.reduce((s, e) => s + e.amountTTC, 0);
 
-      // Amortissements
       let depreciationBuilding = 0;
       let depreciationFurniture = 0;
       if (prop.depreciation && prop.taxRegime === 'reel-simplifie') {

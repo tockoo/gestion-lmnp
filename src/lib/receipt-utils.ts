@@ -1,4 +1,4 @@
-import type { Tenant, Receipt, Property } from '@/types/lmnp';
+import type { Tenant, Receipt } from '@/types/lmnp';
 import { generateId } from './store';
 
 function getDaysInMonth(year: number, month: number): number {
@@ -21,11 +21,9 @@ export function generateReceiptsForYear(year: number, tenants: Tenant[], existin
       const monthStart = new Date(year, month - 1, 1);
       const monthEnd = new Date(year, month - 1, daysInMonth);
 
-      // Check if tenant is active this month
       if (entry > monthEnd) continue;
       if (exit && exit < monthStart) continue;
 
-      // Calculate period
       const periodStartDate = entry > monthStart ? entry : monthStart;
       const periodEndDate = exit && exit < monthEnd ? exit : monthEnd;
 
@@ -38,7 +36,6 @@ export function generateReceiptsForYear(year: number, tenants: Tenant[], existin
       const charges = Math.round(tenant.monthlyCharges * prorata * 100) / 100;
       const total = Math.round((rentHC + charges) * 100) / 100;
 
-      // Check if receipt already exists
       const existing = existingReceipts.find(
         r => r.tenantId === tenant.id && r.month === month && r.year === year
       );
