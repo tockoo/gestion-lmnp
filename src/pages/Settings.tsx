@@ -3,7 +3,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSettings } from '@/lib/store';
+import { resetAllData } from '@/lib/store';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useSettings();
@@ -28,8 +40,24 @@ export default function SettingsPage() {
       <Card className="shadow-md border-destructive/30">
         <CardHeader><CardTitle className="text-destructive">Réinitialiser</CardTitle></CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">Supprimer toutes les données et recharger les données de démonstration.</p>
-          <Button variant="destructive" onClick={() => { localStorage.clear(); window.location.reload(); }}>Réinitialiser les données</Button>
+          <p className="text-sm text-muted-foreground mb-4">Supprimer toutes les données et repartir de zéro.</p>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">Réinitialiser toutes les données</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Cette action supprimera définitivement toutes vos données (biens, locataires, dépenses, quittances, réservations). Cette action est irréversible.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={resetAllData}>Tout supprimer</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
     </div>
