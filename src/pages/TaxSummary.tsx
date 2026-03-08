@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useProperties, useTenants, useReceipts, useExpenses, useSettings } from '@/lib/store';
+import { useProperties, useTenants, useReceipts, useExpenses, useReservations, useSettings } from '@/lib/store';
 import { formatCurrency } from '@/lib/receipt-utils';
 import { generateTaxSummaryPDF } from '@/lib/pdf-utils';
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/types/lmnp';
@@ -13,16 +13,27 @@ export default function TaxSummary() {
   const [tenants] = useTenants();
   const [receipts] = useReceipts();
   const [expenses] = useExpenses();
+  const [reservations] = useReservations();
   const [settings] = useSettings();
   const year = settings.activeFiscalYear;
 
   const summaryData = useMemo(() => {
     return properties.map(prop => {
+      // Recettes longue durée
       const propReceipts = receipts.filter(r => r.propertyId === prop.id && r.year === year && r.status !== 'impaye');
       const totalRentHC = propReceipts.reduce((s, r) => s + r.rentHC, 0);
       const totalCharges = propReceipts.reduce((s, r) => s + r.charges, 0);
-      const totalRecettes = totalRentHC + totalCharges;
 
+      // Recettes courte durée
+      const propReservations = reservations.filter(r =>
+        r.propertyId === prop.id && r.status !== 'annulee' &&
+        r.checkIn.startsWith(String(year))
+      );
+      const totalReservations = propReservations.reduce((s, r) => s + r.totalAmount, 0);
+
+      const totalRecettes = totalRentHC + totalCharges + totalReservations;
+
+      // Dépenses
       const propExpenses = expenses.filter(e => (e.propertyId === prop.id || e.propertyId === 'all') && e.taxDeductible && e.date.startsWith(String(year)));
       const byCategory: Partial<Record<ExpenseCategory, number>> = {};
       for (const e of propExpenses) {
@@ -30,13 +41,28 @@ export default function TaxSummary() {
       }
       const totalDepenses = propExpenses.reduce((s, e) => s + e.amountTTC, 0);
 
-      return { property: prop, totalRentHC, totalCharges, totalRecettes, byCategory, totalDepenses, resultatNet: totalRecettes - totalDepenses };
+      // Amortissements
+      let depreciationBuilding = 0;
+      let depreciationFurniture = 0;
+      if (prop.depreciation && prop.taxRegime === 'reel-simplifie') {
+        const d = prop.depreciation;
+        if (d.buildingYears > 0) depreciationBuilding = Math.round(d.buildingValue / d.buildingYears * 100) / 100;
+        if (d.furnitureYears > 0) depreciationFurniture = Math.round(d.furnitureValue / d.furnitureYears * 100) / 100;
+      }
+      const totalDepreciation = depreciationBuilding + depreciationFurniture;
+
+      return {
+        property: prop, totalRentHC, totalCharges, totalReservations, totalRecettes,
+        byCategory, totalDepenses, depreciationBuilding, depreciationFurniture, totalDepreciation,
+        resultatNet: totalRecettes - totalDepenses - totalDepreciation,
+      };
     });
-  }, [properties, receipts, expenses, year]);
+  }, [properties, receipts, expenses, reservations, year]);
 
   const globalTotals = useMemo(() => ({
     recettes: summaryData.reduce((s, d) => s + d.totalRecettes, 0),
     depenses: summaryData.reduce((s, d) => s + d.totalDepenses, 0),
+    depreciation: summaryData.reduce((s, d) => s + d.totalDepreciation, 0),
     net: summaryData.reduce((s, d) => s + d.resultatNet, 0),
   }), [summaryData]);
 
@@ -64,13 +90,14 @@ export default function TaxSummary() {
             <TableBody>
               <TableRow><TableCell>Recettes brutes</TableCell><TableCell className="text-right text-success font-medium">{formatCurrency(globalTotals.recettes)}</TableCell></TableRow>
               <TableRow><TableCell>Charges déductibles</TableCell><TableCell className="text-right text-destructive font-medium">{formatCurrency(globalTotals.depenses)}</TableCell></TableRow>
+              <TableRow><TableCell>Amortissements</TableCell><TableCell className="text-right text-destructive font-medium">{formatCurrency(globalTotals.depreciation)}</TableCell></TableRow>
               <TableRow className="font-bold border-t-2"><TableCell>Résultat net imposable</TableCell><TableCell className={`text-right ${globalTotals.net >= 0 ? 'text-success' : 'text-destructive'}`}>{formatCurrency(globalTotals.net)}</TableCell></TableRow>
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
-      {summaryData.map(({ property: prop, totalRentHC, totalCharges, totalRecettes, byCategory, totalDepenses, resultatNet }) => (
+      {summaryData.map(({ property: prop, totalRentHC, totalCharges, totalReservations, totalRecettes, byCategory, totalDepenses, depreciationBuilding, depreciationFurniture, totalDepreciation, resultatNet }) => (
         <Card key={prop.id} className="shadow-md">
           <CardHeader><CardTitle>{prop.name}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
@@ -80,6 +107,9 @@ export default function TaxSummary() {
                 <TableBody>
                   <TableRow><TableCell>Loyers HC encaissés</TableCell><TableCell className="text-right">{formatCurrency(totalRentHC)}</TableCell></TableRow>
                   <TableRow><TableCell>Charges locataires encaissées</TableCell><TableCell className="text-right">{formatCurrency(totalCharges)}</TableCell></TableRow>
+                  {totalReservations > 0 && (
+                    <TableRow><TableCell>Recettes location courte durée</TableCell><TableCell className="text-right">{formatCurrency(totalReservations)}</TableCell></TableRow>
+                  )}
                   <TableRow className="font-medium border-t"><TableCell>Total recettes</TableCell><TableCell className="text-right text-success">{formatCurrency(totalRecettes)}</TableCell></TableRow>
                 </TableBody>
               </Table>
@@ -97,6 +127,18 @@ export default function TaxSummary() {
                 </TableBody>
               </Table>
             </div>
+            {totalDepreciation > 0 && (
+              <div>
+                <h3 className="font-semibold mb-2">Amortissements</h3>
+                <Table>
+                  <TableBody>
+                    {depreciationBuilding > 0 && <TableRow><TableCell>Amortissement immobilier ({prop.depreciation?.buildingYears} ans)</TableCell><TableCell className="text-right">{formatCurrency(depreciationBuilding)}</TableCell></TableRow>}
+                    {depreciationFurniture > 0 && <TableRow><TableCell>Amortissement mobilier ({prop.depreciation?.furnitureYears} ans)</TableCell><TableCell className="text-right">{formatCurrency(depreciationFurniture)}</TableCell></TableRow>}
+                    <TableRow className="font-medium border-t"><TableCell>Total amortissements</TableCell><TableCell className="text-right text-destructive">{formatCurrency(totalDepreciation)}</TableCell></TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            )}
             <div className="border-t pt-2">
               <div className="flex justify-between text-lg font-bold">
                 <span>Résultat net</span>

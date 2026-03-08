@@ -1,3 +1,12 @@
+export type RentalType = 'longue-duree' | 'courte-duree';
+
+export interface Depreciation {
+  buildingValue: number;       // Valeur amortissable du bâtiment (hors terrain)
+  buildingYears: number;       // Durée amortissement bâtiment (25-30 ans)
+  furnitureValue: number;      // Valeur du mobilier
+  furnitureYears: number;      // Durée amortissement mobilier (5-10 ans)
+}
+
 export interface Property {
   id: string;
   name: string;
@@ -9,6 +18,9 @@ export interface Property {
   taxRegime: 'micro-bic' | 'reel-simplifie';
   monthlyCoproCharges: number;
   annualPropertyTax: number;
+  rentalType: RentalType;
+  nightlyRate?: number;
+  depreciation?: Depreciation;
 }
 
 export interface Tenant {
@@ -24,6 +36,24 @@ export interface Tenant {
   monthlyCharges: number;
   deposit: number;
   status: 'actif' | 'parti';
+}
+
+export interface Reservation {
+  id: string;
+  propertyId: string;
+  guestName: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  checkIn: string;
+  checkOut: string;
+  nightlyRate: number;
+  nights: number;
+  totalAmount: number;
+  platformFees: number;
+  cleaningFees: number;
+  status: 'confirmee' | 'annulee' | 'terminee';
+  platform: 'airbnb' | 'booking' | 'direct' | 'autre';
+  notes?: string;
 }
 
 export interface Receipt {
@@ -74,6 +104,8 @@ export interface Expense {
   description: string;
   invoiceRef: string;
   taxDeductible: boolean;
+  attachmentUrl?: string;
+  attachmentName?: string;
 }
 
 export interface Settings {
@@ -90,4 +122,16 @@ export const PROPERTY_TYPES: Record<Property['type'], string> = {
   'appartement': 'Appartement',
   'maison': 'Maison',
   'studio': 'Studio',
+};
+
+export const RENTAL_TYPES: Record<RentalType, string> = {
+  'longue-duree': 'Longue durée',
+  'courte-duree': 'Courte durée (Airbnb)',
+};
+
+export const PLATFORM_TYPES: Record<Reservation['platform'], string> = {
+  'airbnb': 'Airbnb',
+  'booking': 'Booking.com',
+  'direct': 'Direct',
+  'autre': 'Autre',
 };
