@@ -242,7 +242,7 @@ function useCrudHook<T extends { id: string }>(
 
   const removeMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from(table).delete().eq('id', id);
+      const { error } = await (supabase as any).from(table).delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: [queryKey] }),
