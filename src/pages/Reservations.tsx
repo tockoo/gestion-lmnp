@@ -35,6 +35,8 @@ export default function Reservations() {
   const [editing, setEditing] = useState<Reservation | null>(null);
   const [form, setForm] = useState<Omit<Reservation, 'id'>>(emptyReservation);
   const [open, setOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const queryClient = useQueryClient();
 
   const shortTermProps = useMemo(() => properties.filter(p => p.rentalType === 'courte-duree'), [properties]);
 
