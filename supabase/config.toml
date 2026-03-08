@@ -1,1 +1,4 @@
 project_id = "iaypwnoaqleiupqbcppy"
+
+[functions.sync-ical]
+verify_jwt = false
