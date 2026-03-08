@@ -315,13 +315,14 @@ export function useSettings() {
 }
 
 export async function resetAllData() {
+  const sb = supabase as any;
   await Promise.all([
-    supabase.from('receipts').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-    supabase.from('expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-    supabase.from('reservations').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-    supabase.from('tenants').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-    supabase.from('properties').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-    supabase.from('settings').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+    sb.from('receipts').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+    sb.from('expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+    sb.from('reservations').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+    sb.from('tenants').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+    sb.from('properties').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+    sb.from('settings').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
   ]);
   window.location.reload();
 }
