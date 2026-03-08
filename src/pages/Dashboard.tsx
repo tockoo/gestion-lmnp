@@ -7,11 +7,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { AlertTriangle, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 
 export default function Dashboard() {
-  const [properties] = useProperties();
-  const [tenants] = useTenants();
-  const [receipts] = useReceipts();
-  const [expenses] = useExpenses();
-  const [settings] = useSettings();
+  const { data: properties } = useProperties();
+  const { data: tenants } = useTenants();
+  const { data: receipts } = useReceipts();
+  const { data: expenses } = useExpenses();
+  const { data: settings } = useSettings();
   const year = settings.activeFiscalYear;
 
   const yearReceipts = useMemo(() => {
@@ -81,7 +81,6 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Per property */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {properties.map(p => {
           const propRec = yearReceipts.filter(r => r.propertyId === p.id && r.status !== 'impaye').reduce((s, r) => s + r.amountReceived, 0);
@@ -101,7 +100,6 @@ export default function Dashboard() {
         })}
       </div>
 
-      {/* Chart */}
       <Card className="shadow-md">
         <CardHeader><CardTitle>Recettes vs Dépenses par mois</CardTitle></CardHeader>
         <CardContent>
@@ -119,7 +117,6 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Alerts */}
       {alerts.length > 0 && (
         <Card className="shadow-md border-destructive/30">
           <CardHeader><CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /> Alertes</CardTitle></CardHeader>

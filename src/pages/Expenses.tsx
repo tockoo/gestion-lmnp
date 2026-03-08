@@ -22,8 +22,8 @@ const emptyExpense: Omit<Expense, 'id'> = {
 };
 
 export default function Expenses() {
-  const [properties] = useProperties();
-  const [expenses, setExpenses] = useExpenses();
+  const { data: properties } = useProperties();
+  const { data: expenses, add, update, remove } = useExpenses();
   const [editing, setEditing] = useState<Expense | null>(null);
   const [form, setForm] = useState<Omit<Expense, 'id'>>(emptyExpense);
   const [open, setOpen] = useState(false);
@@ -33,16 +33,21 @@ export default function Expenses() {
   const openNew = () => { setEditing(null); setForm({ ...emptyExpense, propertyId: properties[0]?.id || '' }); setOpen(true); };
   const openEdit = (e: Expense) => { setEditing(e); setForm({ ...e }); setOpen(true); };
 
-  const save = () => {
-    if (editing) {
-      setExpenses(prev => prev.map(e => e.id === editing.id ? { ...form, id: editing.id } : e));
-    } else {
-      setExpenses(prev => [...prev, { ...form, id: generateId() }]);
-    }
-    setOpen(false);
+  const save = async () => {
+    try {
+      if (editing) {
+        await update({ ...form, id: editing.id });
+      } else {
+        await add(form);
+      }
+      setOpen(false);
+    } catch (err: any) { toast.error(err.message); }
   };
 
-  const remove = (id: string) => setExpenses(prev => prev.filter(e => e.id !== id));
+  const handleRemove = async (id: string) => {
+    try { await remove(id); } catch (err: any) { toast.error(err.message); }
+  };
+
   const updateForm = (key: string, value: string | number | boolean | undefined) => setForm(prev => ({ ...prev, [key]: value }));
   const propName = (id: string) => id === 'all' ? 'Tous les biens' : properties.find(p => p.id === id)?.name || '—';
 
@@ -107,7 +112,6 @@ export default function Expenses() {
                 <Label htmlFor="deductible">Déductible fiscalement</Label>
               </div>
 
-              {/* Pièce jointe */}
               <div className="space-y-2">
                 <Label>Pièce jointe (facture)</Label>
                 <div className="flex items-center gap-2">
@@ -176,7 +180,7 @@ export default function Expenses() {
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(e)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => remove(e.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleRemove(e.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>

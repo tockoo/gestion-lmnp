@@ -12,25 +12,32 @@ import { generateReceiptsForYear, formatCurrency, formatDateFR } from '@/lib/rec
 import { generateReceiptPDF } from '@/lib/pdf-utils';
 import { MONTHS_FR, type Receipt } from '@/types/lmnp';
 import { FileDown, RefreshCw, Eye, Pencil } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Receipts() {
-  const [properties] = useProperties();
-  const [tenants] = useTenants();
-  const [receipts, setReceipts] = useReceipts();
-  const [settings] = useSettings();
+  const { data: properties } = useProperties();
+  const { data: tenants } = useTenants();
+  const { data: receipts, add, update } = useReceipts();
+  const { data: settings } = useSettings();
   const year = settings.activeFiscalYear;
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Receipt>>({});
 
-  const regenerate = () => {
+  const regenerate = async () => {
     const generated = generateReceiptsForYear(year, tenants, receipts);
-    setReceipts(generated);
+    // Upsert: add new ones, update existing ones
+    for (const r of generated) {
+      const existing = receipts.find(er => er.tenantId === r.tenantId && er.month === r.month && er.year === r.year);
+      if (existing) {
+        await update({ ...r, id: existing.id });
+      } else {
+        const { id, ...rest } = r;
+        await add(rest);
+      }
+    }
+    toast.success('Quittances regénérées');
   };
-
-  useEffect(() => {
-    if (receipts.length === 0 && tenants.length > 0) regenerate();
-  }, []); // eslint-disable-line
 
   const receiptsByProperty = useMemo(() => {
     const yearReceipts = receipts.filter(r => r.year === year);
@@ -42,8 +49,11 @@ export default function Receipts() {
     return grouped;
   }, [receipts, year]);
 
-  const updateReceipt = (id: string, updates: Record<string, unknown>) => {
-    setReceipts(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+  const updateReceipt = async (id: string, updates: Record<string, unknown>) => {
+    const existing = receipts.find(r => r.id === id);
+    if (existing) {
+      await update({ ...existing, ...updates } as Receipt);
+    }
   };
 
   const tenantName = (id: string) => {
@@ -71,9 +81,9 @@ export default function Receipts() {
     setEditForm({ ...r });
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (selectedReceipt && editForm) {
-      updateReceipt(selectedReceipt.id, editForm);
+      await updateReceipt(selectedReceipt.id, editForm);
       setSelectedReceipt({ ...selectedReceipt, ...editForm } as Receipt);
       setEditMode(false);
     }
@@ -148,7 +158,6 @@ export default function Receipts() {
         );
       })}
 
-      {/* Detail / Edit Dialog */}
       <Dialog open={!!selectedReceipt} onOpenChange={open => { if (!open) setSelectedReceipt(null); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>

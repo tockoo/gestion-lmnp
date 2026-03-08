@@ -8,10 +8,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useProperties, generateId } from '@/lib/store';
+import { useProperties } from '@/lib/store';
 import { formatCurrency } from '@/lib/receipt-utils';
 import { PROPERTY_TYPES, RENTAL_TYPES, type Property, type Depreciation } from '@/types/lmnp';
 import { Plus, Pencil, Trash2, Home, Plane } from 'lucide-react';
+import { toast } from 'sonner';
 
 const emptyDepreciation: Depreciation = {
   buildingValue: 0, buildingYears: 25, furnitureValue: 0, furnitureYears: 7,
@@ -25,7 +26,7 @@ const emptyProperty: Omit<Property, 'id'> = {
 };
 
 export default function Properties() {
-  const [properties, setProperties] = useProperties();
+  const { data: properties, add, update, remove } = useProperties();
   const [editing, setEditing] = useState<Property | null>(null);
   const [form, setForm] = useState<Omit<Property, 'id'>>(emptyProperty);
   const [open, setOpen] = useState(false);
@@ -33,16 +34,23 @@ export default function Properties() {
   const openNew = () => { setEditing(null); setForm({ ...emptyProperty, depreciation: { ...emptyDepreciation } }); setOpen(true); };
   const openEdit = (p: Property) => { setEditing(p); setForm({ ...p, depreciation: p.depreciation ? { ...p.depreciation } : { ...emptyDepreciation } }); setOpen(true); };
 
-  const save = () => {
-    if (editing) {
-      setProperties(prev => prev.map(p => p.id === editing.id ? { ...form, id: editing.id } : p));
-    } else {
-      setProperties(prev => [...prev, { ...form, id: generateId() }]);
+  const save = async () => {
+    try {
+      if (editing) {
+        await update({ ...form, id: editing.id });
+      } else {
+        await add(form);
+      }
+      setOpen(false);
+    } catch (err: any) {
+      toast.error(err.message);
     }
-    setOpen(false);
   };
 
-  const remove = (id: string) => setProperties(prev => prev.filter(p => p.id !== id));
+  const handleRemove = async (id: string) => {
+    try { await remove(id); } catch (err: any) { toast.error(err.message); }
+  };
+
   const updateForm = (key: string, value: string | number | undefined) => setForm(prev => ({ ...prev, [key]: value }));
   const updateDepreciation = (key: keyof Depreciation, value: number) => {
     setForm(prev => ({ ...prev, depreciation: { ...(prev.depreciation || emptyDepreciation), [key]: value } }));
@@ -158,7 +166,7 @@ export default function Properties() {
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => remove(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleRemove(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
