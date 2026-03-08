@@ -29,6 +29,8 @@ function dbToProperty(row: any): Property {
       furnitureValue: Number(row.depreciation_furniture_value),
       furnitureYears: Number(row.depreciation_furniture_years),
     },
+    icalAirbnbUrl: row.ical_airbnb_url ?? undefined,
+    icalBookingUrl: row.ical_booking_url ?? undefined,
   };
 }
 
@@ -50,6 +52,8 @@ function propertyToDb(p: Omit<Property, 'id'>, userId: string) {
     depreciation_building_years: p.depreciation?.buildingYears ?? 25,
     depreciation_furniture_value: p.depreciation?.furnitureValue ?? 0,
     depreciation_furniture_years: p.depreciation?.furnitureYears ?? 7,
+    ical_airbnb_url: p.icalAirbnbUrl ?? null,
+    ical_booking_url: p.icalBookingUrl ?? null,
   };
 }
 

@@ -11,8 +11,10 @@ import { Badge } from '@/components/ui/badge';
 import { useProperties, useReservations } from '@/lib/store';
 import { formatCurrency, formatDateFR } from '@/lib/receipt-utils';
 import { PLATFORM_TYPES, type Reservation } from '@/types/lmnp';
-import { Plus, Pencil, Trash2, CalendarDays } from 'lucide-react';
+import { Plus, Pencil, Trash2, CalendarDays, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 function calcNights(checkIn: string, checkOut: string): number {
   if (!checkIn || !checkOut) return 0;
@@ -33,6 +35,8 @@ export default function Reservations() {
   const [editing, setEditing] = useState<Reservation | null>(null);
   const [form, setForm] = useState<Omit<Reservation, 'id'>>(emptyReservation);
   const [open, setOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const queryClient = useQueryClient();
 
   const shortTermProps = useMemo(() => properties.filter(p => p.rentalType === 'courte-duree'), [properties]);
 
@@ -83,6 +87,39 @@ export default function Reservations() {
 
   const propName = (id: string) => properties.find(p => p.id === id)?.name || '—';
 
+  const syncIcal = async () => {
+    const propsWithIcal = properties.filter(p => p.icalAirbnbUrl || p.icalBookingUrl);
+    if (propsWithIcal.length === 0) {
+      toast.info('Aucun bien avec un lien iCal configuré. Ajoutez vos liens iCal dans les paramètres de vos biens.');
+      return;
+    }
+    setSyncing(true);
+    let totalImported = 0;
+    try {
+      for (const prop of propsWithIcal) {
+        const { data, error } = await supabase.functions.invoke('sync-ical', {
+          body: { property_id: prop.id },
+        });
+        if (error) {
+          console.error('Sync error for', prop.name, error);
+          toast.error(`Erreur sync ${prop.name}: ${error.message}`);
+          continue;
+        }
+        totalImported += data?.imported || 0;
+      }
+      if (totalImported > 0) {
+        toast.success(`${totalImported} nouvelle(s) réservation(s) importée(s)`);
+        queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      } else {
+        toast.info('Aucune nouvelle réservation trouvée');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur de synchronisation');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const statusColor = (s: Reservation['status']) => {
     if (s === 'confirmee') return 'bg-success text-success-foreground';
     if (s === 'terminee') return 'bg-primary text-primary-foreground';
@@ -119,69 +156,75 @@ export default function Reservations() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold">Réservations courte durée</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openNew}><Plus className="h-4 w-4 mr-2" />Nouvelle réservation</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>{editing ? 'Modifier la réservation' : 'Nouvelle réservation'}</DialogTitle></DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div>
-                <Label>Bien</Label>
-                <Select value={form.propertyId} onValueChange={v => updateForm('propertyId', v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name} {p.rentalType === 'courte-duree' ? '🏠' : ''}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div><Label>Nom du voyageur</Label><Input value={form.guestName} onChange={e => updateForm('guestName', e.target.value)} /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label>Email</Label><Input type="email" value={form.guestEmail || ''} onChange={e => updateForm('guestEmail', e.target.value)} /></div>
-                <div><Label>Téléphone</Label><Input value={form.guestPhone || ''} onChange={e => updateForm('guestPhone', e.target.value)} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label>Arrivée</Label><Input type="date" value={form.checkIn} onChange={e => updateForm('checkIn', e.target.value)} /></div>
-                <div><Label>Départ</Label><Input type="date" value={form.checkOut} onChange={e => updateForm('checkOut', e.target.value)} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={syncIcal} disabled={syncing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Synchronisation...' : 'Synchroniser iCal'}
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openNew}><Plus className="h-4 w-4 mr-2" />Nouvelle réservation</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader><DialogTitle>{editing ? 'Modifier la réservation' : 'Nouvelle réservation'}</DialogTitle></DialogHeader>
+              <div className="grid gap-4 py-4">
                 <div>
-                  <Label>Plateforme</Label>
-                  <Select value={form.platform} onValueChange={v => updateForm('platform', v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{Object.entries(PLATFORM_TYPES).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Statut</Label>
-                  <Select value={form.status} onValueChange={v => updateForm('status', v)}>
+                  <Label>Bien</Label>
+                  <Select value={form.propertyId} onValueChange={v => updateForm('propertyId', v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="confirmee">Confirmée</SelectItem>
-                      <SelectItem value="terminee">Terminée</SelectItem>
-                      <SelectItem value="annulee">Annulée</SelectItem>
+                      {properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name} {p.rentalType === 'courte-duree' ? '🏠' : ''}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div><Label>Tarif/nuit (€)</Label><Input type="number" value={form.nightlyRate || ''} onChange={e => updateForm('nightlyRate', +e.target.value)} /></div>
-                <div><Label>Ménage (€)</Label><Input type="number" value={form.cleaningFees || ''} onChange={e => updateForm('cleaningFees', +e.target.value)} /></div>
-                <div><Label>Commission (€)</Label><Input type="number" value={form.platformFees || ''} onChange={e => updateForm('platformFees', +e.target.value)} /></div>
-              </div>
-              {form.checkIn && form.checkOut && (
-                <div className="bg-muted rounded-lg p-3 text-sm space-y-1">
-                  <div>{calcNights(form.checkIn, form.checkOut)} nuits × {formatCurrency(form.nightlyRate)}</div>
-                  <div className="font-semibold">Total estimé : {formatCurrency((form.nightlyRate * calcNights(form.checkIn, form.checkOut)) + form.cleaningFees - form.platformFees)}</div>
+                <div><Label>Nom du voyageur</Label><Input value={form.guestName} onChange={e => updateForm('guestName', e.target.value)} /></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>Email</Label><Input type="email" value={form.guestEmail || ''} onChange={e => updateForm('guestEmail', e.target.value)} /></div>
+                  <div><Label>Téléphone</Label><Input value={form.guestPhone || ''} onChange={e => updateForm('guestPhone', e.target.value)} /></div>
                 </div>
-              )}
-              <div><Label>Notes</Label><Textarea value={form.notes || ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
-              <Button onClick={save} className="w-full">{editing ? 'Enregistrer' : 'Ajouter'}</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>Arrivée</Label><Input type="date" value={form.checkIn} onChange={e => updateForm('checkIn', e.target.value)} /></div>
+                  <div><Label>Départ</Label><Input type="date" value={form.checkOut} onChange={e => updateForm('checkOut', e.target.value)} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Plateforme</Label>
+                    <Select value={form.platform} onValueChange={v => updateForm('platform', v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{Object.entries(PLATFORM_TYPES).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Statut</Label>
+                    <Select value={form.status} onValueChange={v => updateForm('status', v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="confirmee">Confirmée</SelectItem>
+                        <SelectItem value="terminee">Terminée</SelectItem>
+                        <SelectItem value="annulee">Annulée</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div><Label>Tarif/nuit (€)</Label><Input type="number" value={form.nightlyRate || ''} onChange={e => updateForm('nightlyRate', +e.target.value)} /></div>
+                  <div><Label>Ménage (€)</Label><Input type="number" value={form.cleaningFees || ''} onChange={e => updateForm('cleaningFees', +e.target.value)} /></div>
+                  <div><Label>Commission (€)</Label><Input type="number" value={form.platformFees || ''} onChange={e => updateForm('platformFees', +e.target.value)} /></div>
+                </div>
+                {form.checkIn && form.checkOut && (
+                  <div className="bg-muted rounded-lg p-3 text-sm space-y-1">
+                    <div>{calcNights(form.checkIn, form.checkOut)} nuits × {formatCurrency(form.nightlyRate)}</div>
+                    <div className="font-semibold">Total estimé : {formatCurrency((form.nightlyRate * calcNights(form.checkIn, form.checkOut)) + form.cleaningFees - form.platformFees)}</div>
+                  </div>
+                )}
+                <div><Label>Notes</Label><Textarea value={form.notes || ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
+                <Button onClick={save} className="w-full">{editing ? 'Enregistrer' : 'Ajouter'}</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
