@@ -214,7 +214,7 @@ function useCrudHook<T extends { id: string }>(
   const { data = [], isLoading } = useQuery({
     queryKey: [queryKey],
     queryFn: async () => {
-      const { data, error } = await supabase.from(table).select('*');
+      const { data, error } = await (supabase as any).from(table).select('*');
       if (error) throw error;
       return (data || []).map(fromDb);
     },
