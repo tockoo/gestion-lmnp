@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,11 +11,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useProperties, useExpenses, generateId } from '@/lib/store';
 import { formatCurrency, formatDateFR } from '@/lib/receipt-utils';
 import { EXPENSE_CATEGORIES, type Expense, type ExpenseCategory } from '@/types/lmnp';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Plus, Pencil, Trash2, Paperclip, ExternalLink, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const emptyExpense: Omit<Expense, 'id'> = {
   propertyId: '', category: 'travaux', amountTTC: 0, date: '',
   description: '', invoiceRef: '', taxDeductible: true,
+  attachmentUrl: undefined, attachmentName: undefined,
 };
 
 export default function Expenses() {
@@ -24,6 +27,8 @@ export default function Expenses() {
   const [editing, setEditing] = useState<Expense | null>(null);
   const [form, setForm] = useState<Omit<Expense, 'id'>>(emptyExpense);
   const [open, setOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const openNew = () => { setEditing(null); setForm({ ...emptyExpense, propertyId: properties[0]?.id || '' }); setOpen(true); };
   const openEdit = (e: Expense) => { setEditing(e); setForm({ ...e }); setOpen(true); };
@@ -38,8 +43,30 @@ export default function Expenses() {
   };
 
   const remove = (id: string) => setExpenses(prev => prev.filter(e => e.id !== id));
-  const updateForm = (key: string, value: string | number | boolean) => setForm(prev => ({ ...prev, [key]: value }));
+  const updateForm = (key: string, value: string | number | boolean | undefined) => setForm(prev => ({ ...prev, [key]: value }));
   const propName = (id: string) => id === 'all' ? 'Tous les biens' : properties.find(p => p.id === id)?.name || '—';
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${generateId()}.${ext}`;
+      const { error } = await supabase.storage.from('invoices').upload(path, file);
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage.from('invoices').getPublicUrl(path);
+      updateForm('attachmentUrl', publicUrl);
+      updateForm('attachmentName', file.name);
+      toast.success('Facture uploadée');
+    } catch (err: any) {
+      toast.error('Erreur upload: ' + (err.message || 'erreur inconnue'));
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -79,6 +106,27 @@ export default function Expenses() {
                 <Checkbox checked={form.taxDeductible} onCheckedChange={v => updateForm('taxDeductible', !!v)} id="deductible" />
                 <Label htmlFor="deductible">Déductible fiscalement</Label>
               </div>
+
+              {/* Pièce jointe */}
+              <div className="space-y-2">
+                <Label>Pièce jointe (facture)</Label>
+                <div className="flex items-center gap-2">
+                  <Input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden" onChange={handleFileUpload} />
+                  <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                    {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Paperclip className="h-4 w-4 mr-2" />}
+                    {uploading ? 'Upload...' : 'Joindre un fichier'}
+                  </Button>
+                  {form.attachmentName && (
+                    <span className="text-xs text-muted-foreground truncate max-w-[200px]">{form.attachmentName}</span>
+                  )}
+                </div>
+                {form.attachmentUrl && (
+                  <a href={form.attachmentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary flex items-center gap-1 hover:underline">
+                    <ExternalLink className="h-3 w-3" /> Voir le fichier
+                  </a>
+                )}
+              </div>
+
               <Button onClick={save} className="w-full">{editing ? 'Enregistrer' : 'Ajouter'}</Button>
             </div>
           </DialogContent>
@@ -96,6 +144,7 @@ export default function Expenses() {
                 <TableHead>Description</TableHead>
                 <TableHead>Montant</TableHead>
                 <TableHead>Déductible</TableHead>
+                <TableHead>Pièce jointe</TableHead>
                 <TableHead className="w-24">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -113,6 +162,18 @@ export default function Expenses() {
                     </Badge>
                   </TableCell>
                   <TableCell>
+                    {e.attachmentUrl ? (
+                      <a href={e.attachmentUrl} target="_blank" rel="noopener noreferrer">
+                        <Badge variant="outline" className="gap-1 cursor-pointer hover:bg-accent">
+                          <Paperclip className="h-3 w-3" />
+                          {e.attachmentName || 'Fichier'}
+                        </Badge>
+                      </a>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(e)}><Pencil className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" onClick={() => remove(e.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -120,7 +181,7 @@ export default function Expenses() {
                   </TableCell>
                 </TableRow>
               ))}
-              {expenses.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Aucune dépense</TableCell></TableRow>}
+              {expenses.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Aucune dépense</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>

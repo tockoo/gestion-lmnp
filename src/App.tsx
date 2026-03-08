@@ -10,6 +10,7 @@ import Properties from "./pages/Properties";
 import Tenants from "./pages/Tenants";
 import Receipts from "./pages/Receipts";
 import Expenses from "./pages/Expenses";
+import Reservations from "./pages/Reservations";
 import TaxSummary from "./pages/TaxSummary";
 import SettingsPage from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/" element={<Dashboard />} />
             <Route path="/biens" element={<Properties />} />
             <Route path="/locataires" element={<Tenants />} />
+            <Route path="/reservations" element={<Reservations />} />
             <Route path="/quittances" element={<Receipts />} />
             <Route path="/depenses" element={<Expenses />} />
             <Route path="/recap" element={<TaxSummary />} />

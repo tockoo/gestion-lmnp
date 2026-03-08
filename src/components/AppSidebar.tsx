@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, Users, FileText, Wallet, BarChart3, Settings } from 'lucide-react';
+import { LayoutDashboard, Building2, Users, FileText, Wallet, BarChart3, Settings, CalendarDays } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import {
@@ -10,6 +10,7 @@ const items = [
   { title: 'Tableau de bord', url: '/', icon: LayoutDashboard },
   { title: 'Mes biens', url: '/biens', icon: Building2 },
   { title: 'Locataires', url: '/locataires', icon: Users },
+  { title: 'Réservations', url: '/reservations', icon: CalendarDays },
   { title: 'Quittances', url: '/quittances', icon: FileText },
   { title: 'Dépenses', url: '/depenses', icon: Wallet },
   { title: 'Récapitulatif fiscal', url: '/recap', icon: BarChart3 },

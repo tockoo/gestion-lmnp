@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { Property, Tenant, Expense, Receipt, Settings } from '@/types/lmnp';
+import type { Property, Tenant, Expense, Receipt, Settings, Reservation } from '@/types/lmnp';
 
 const KEYS = {
   properties: 'lmnp_properties',
@@ -7,6 +7,7 @@ const KEYS = {
   receipts: 'lmnp_receipts',
   expenses: 'lmnp_expenses',
   settings: 'lmnp_settings',
+  reservations: 'lmnp_reservations',
   initialized: 'lmnp_initialized',
 };
 
@@ -35,6 +36,7 @@ export const useProperties = () => useLocalStorage<Property[]>(KEYS.properties, 
 export const useTenants = () => useLocalStorage<Tenant[]>(KEYS.tenants, []);
 export const useReceipts = () => useLocalStorage<Receipt[]>(KEYS.receipts, []);
 export const useExpenses = () => useLocalStorage<Expense[]>(KEYS.expenses, []);
+export const useReservations = () => useLocalStorage<Reservation[]>(KEYS.reservations, []);
 export const useSettings = () => useLocalStorage<Settings>(KEYS.settings, { ownerName: 'Mon Nom', activeFiscalYear: 2025 });
 
 export function initDemoData() {
@@ -52,6 +54,13 @@ export function initDemoData() {
       taxRegime: 'reel-simplifie',
       monthlyCoproCharges: 80,
       annualPropertyTax: 950,
+      rentalType: 'longue-duree',
+      depreciation: {
+        buildingValue: 126000,
+        buildingYears: 25,
+        furnitureValue: 8000,
+        furnitureYears: 7,
+      },
     },
     {
       id: 'prop-2',
@@ -64,6 +73,13 @@ export function initDemoData() {
       taxRegime: 'reel-simplifie',
       monthlyCoproCharges: 120,
       annualPropertyTax: 1200,
+      rentalType: 'longue-duree',
+      depreciation: {
+        buildingValue: 154000,
+        buildingYears: 25,
+        furnitureValue: 12000,
+        furnitureYears: 7,
+      },
     },
   ];
 
@@ -146,6 +162,7 @@ export function initDemoData() {
   localStorage.setItem(KEYS.properties, JSON.stringify(properties));
   localStorage.setItem(KEYS.tenants, JSON.stringify(tenants));
   localStorage.setItem(KEYS.expenses, JSON.stringify(expenses));
+  localStorage.setItem(KEYS.reservations, JSON.stringify([]));
   localStorage.setItem(KEYS.settings, JSON.stringify({ ownerName: 'Jean Dupont', activeFiscalYear: 2025 }));
   localStorage.setItem(KEYS.initialized, 'true');
 }
