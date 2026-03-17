@@ -119,9 +119,10 @@ Deno.serve(async (req) => {
         console.log(`Parsed ${events.length} events from ${platform}`)
 
         for (const event of events) {
-          // Skip blocked/unavailable entries (no real guest)
+          // Skip blocked/unavailable entries only for Airbnb
+          // Booking uses "CLOSED - Not available" for real reservations too
           const lowerSummary = event.summary.toLowerCase()
-          if (lowerSummary.includes('not available') || lowerSummary.includes('blocked') || lowerSummary === 'airbnb (not available)') {
+          if (platform === 'airbnb' && (lowerSummary.includes('not available') || lowerSummary.includes('blocked'))) {
             continue
           }
 
