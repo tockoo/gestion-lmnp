@@ -66,7 +66,7 @@ export default function Receipts() {
     if (!r) return;
     const t = tenants.find(t => t.id === r.tenantId);
     const p = properties.find(p => p.id === r.propertyId);
-    if (t && p) generateReceiptPDF(r, t, p);
+    if (t && p) generateReceiptPDF(r, t, p, settings);
   };
 
   const openView = (r: Receipt) => {
